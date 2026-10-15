@@ -1,9 +1,10 @@
 ﻿import { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Speech from 'expo-speech';
 
 const normalize = (s) =>
-  s
+  (s || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -21,90 +22,132 @@ const scoreAgainst = (target, heard) => {
 };
 
 export default function PronunciationCheck({ target, langCode, onPass }) {
-  const [status, setStatus] = useState('idle');
+  const [phase, setPhase] = useState('idle');
+  const [message, setMessage] = useState('Pulsa el micrófono y repite la frase.');
   const [result, setResult] = useState(null);
   const [heard, setHeard] = useState('');
   const recRef = useRef(null);
+  const gotResult = useRef(false);
 
-  const SR = typeof window !== 'undefined'
-    ? window.SpeechRecognition || window.webkitSpeechRecognition
-    : null;
+  const listen = () => {
+    const SR = typeof window !== 'undefined'
+      ? window.SpeechRecognition || window.webkitSpeechRecognition
+      : null;
 
-  const start = () => {
     if (!SR) {
-      setStatus('unsupported');
+      setPhase('noSupport');
+      setMessage('Este navegador no tiene reconocimiento de voz. Usa la autoevaluación de abajo.');
       return;
     }
-    const rec = new SR();
-    rec.lang = langCode || 'pl-PL';
-    rec.interimResults = false;
-    rec.maxAlternatives = 3;
-    recRef.current = rec;
-    setStatus('listening');
-    setResult(null);
 
-    rec.onresult = (e) => {
-      const alternatives = Array.from(e.results[0]).map((a) => a.transcript);
-      const best = alternatives[0] || '';
-      setHeard(best);
-      const r = scoreAgainst(target, best);
-      setResult(r);
-      setStatus('done');
-      if (r.score >= 70 && onPass) onPass(r.score);
-    };
-    rec.onerror = (e) => {
-      setStatus(e.error === 'not-allowed' ? 'denied' : 'error');
-    };
-    rec.onend = () => {
-      setStatus((s) => (s === 'listening' ? 'error' : s));
-    };
-    rec.start();
+    try {
+      const rec = new SR();
+      rec.lang = langCode || 'pl-PL';
+      rec.interimResults = false;
+      rec.maxAlternatives = 3;
+      recRef.current = rec;
+      gotResult.current = false;
+      setPhase('listening');
+      setResult(null);
+      setHeard('');
+      setMessage('Escuchando… repite la frase ahora.');
+
+      rec.onresult = (e) => {
+        gotResult.current = true;
+        const text = (e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
+        setHeard(text);
+        setResult(scoreAgainst(target, text));
+        setPhase('done');
+        setMessage(text ? 'Esto es lo que escuché:' : 'No escuché ninguna palabra.');
+      };
+
+      rec.onerror = (e) => {
+        gotResult.current = true;
+        setPhase('error');
+        setMessage(
+          e.error === 'not-allowed'
+            ? 'Permiso del micrófono denegado. Actívalo en Ajustes → Safari → Micrófono.'
+            : 'No funcionó el reconocimiento (' + e.error + '). Usa la autoevaluación.'
+        );
+      };
+
+      rec.onend = () => {
+        if (!gotResult.current) {
+          setPhase('error');
+          setMessage('No detecté voz. Pulsa el micrófono para intentarlo otra vez.');
+        }
+      };
+
+      rec.start();
+    } catch (err) {
+      setPhase('noSupport');
+      setMessage('No se pudo iniciar el micrófono. Usa la autoevaluación de abajo.');
+    }
   };
 
   const stop = () => {
     if (recRef.current) recRef.current.stop();
   };
 
+  const selfOk = () => {
+    setPhase('done');
+    setMessage('¡Muy bien! Marcada como correcta.');
+    if (onPass) onPass(100);
+  };
+
+  const retry = () => {
+    setPhase('idle');
+    setResult(null);
+    setMessage('Pulsa el micrófono y repite la frase.');
+  };
+
+  const hear = () => {
+    Speech.stop();
+    Speech.speak(target, { language: langCode || 'pl-PL', rate: 0.8 });
+  };
+
+  const showSelfCheck = phase === 'done' || phase === 'error' || phase === 'noSupport';
+
   return (
     <View style={styles.wrap}>
-      {status === 'unsupported' && (
-        <Text style={styles.warn}>
-          Tu navegador no permite reconocer voz. Prueba en Safari de iPhone o en Chrome.
-        </Text>
-      )}
-      {status === 'denied' && (
-        <Text style={styles.warn}>
-          Permiso del micrófono denegado. Actívalo en Ajustes → Safari → Micrófono.
-        </Text>
-      )}
-      {status === 'error' && (
-        <Text style={styles.warn}>No se escuchó bien. Inténtalo otra vez.</Text>
-      )}
-
-      <TouchableOpacity
-        style={[styles.micBtn, status === 'listening' && styles.micActive]}
-        onPress={status === 'listening' ? stop : start}
-      >
-        <Ionicons name={status === 'listening' ? 'stop' : 'mic'} size={34} color="#FFFFFF" />
-      </TouchableOpacity>
-      <Text style={styles.hint}>
-        {status === 'listening' ? 'Escuchando… pulsa para parar' : 'Pulsa y repite la frase'}
+      <Text style={[styles.status, phase === 'error' || phase === 'noSupport' ? styles.statusWarn : null]}>
+        {message}
       </Text>
 
-      {status === 'done' && result && (
+      <TouchableOpacity
+        style={[styles.micBtn, phase === 'listening' && styles.micActive]}
+        onPress={phase === 'listening' ? stop : listen}
+      >
+        <Ionicons name={phase === 'listening' ? 'stop' : 'mic'} size={34} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.hearBtn} onPress={hear}>
+        <Text style={styles.hearText}>🔊 Escuchar frase</Text>
+      </TouchableOpacity>
+
+      {phase === 'done' && result && (
         <View style={styles.resultBox}>
           <Text style={styles.score}>{result.score}/100</Text>
-          <Text style={styles.heard}>Escuché: "{heard}"</Text>
+          {heard ? <Text style={styles.heard}>"{heard}"</Text> : null}
           <View style={styles.wordRow}>
             {result.matched.map((m, i) => (
-              <Text key={i} style={[styles.word, m.ok ? styles.wordOk : styles.wordBad]}>
-                {m.word}
-              </Text>
+              <Text key={i} style={[styles.word, m.ok ? styles.wordOk : styles.wordBad]}>{m.word}</Text>
             ))}
           </View>
-          <Text style={styles.verdict}>
-            {result.score >= 70 ? '¡Muy bien! Sigue así.' : 'Escucha otra vez y repite más despacio.'}
-          </Text>
+        </View>
+      )}
+
+      {showSelfCheck && (
+        <View style={styles.selfBox}>
+          <Text style={styles.selfTitle}>¿Lo dijiste bien?</Text>
+          <View style={styles.selfRow}>
+            <TouchableOpacity style={[styles.selfBtn, styles.selfOk]} onPress={selfOk}>
+              <Text style={styles.selfBtnText}>✅ Sí</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.selfBtn, styles.selfRetry]} onPress={retry}>
+              <Text style={styles.selfBtnText}>🔁 Otra vez</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -112,17 +155,25 @@ export default function PronunciationCheck({ target, langCode, onPass }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center', paddingVertical: 16, gap: 10 },
+  wrap: { alignItems: 'center', paddingVertical: 12, gap: 12, width: '100%' },
+  status: { fontSize: 14, color: '#334155', textAlign: 'center' },
+  statusWarn: { color: '#B45309' },
   micBtn: { width: 76, height: 76, borderRadius: 38, backgroundColor: '#0284C7', justifyContent: 'center', alignItems: 'center' },
   micActive: { backgroundColor: '#EF4444' },
-  hint: { fontSize: 13, color: '#64748B' },
-  warn: { fontSize: 13, color: '#B45309', textAlign: 'center' },
-  resultBox: { marginTop: 10, width: '100%', backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, alignItems: 'center', gap: 8 },
-  score: { fontSize: 28, fontWeight: '800', color: '#0F172A' },
+  hearBtn: { backgroundColor: '#E0F2FE', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
+  hearText: { color: '#0369A1', fontWeight: '700', fontSize: 13 },
+  resultBox: { width: '100%', backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, alignItems: 'center', gap: 8 },
+  score: { fontSize: 26, fontWeight: '800', color: '#0F172A' },
   heard: { fontSize: 13, color: '#334155' },
   wordRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   word: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, fontSize: 14, fontWeight: '700' },
   wordOk: { backgroundColor: '#DCFCE7', color: '#166534' },
   wordBad: { backgroundColor: '#FEE2E2', color: '#991B1B' },
-  verdict: { fontSize: 13, color: '#0F172A', fontWeight: '600' },
+  selfBox: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  selfTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  selfRow: { flexDirection: 'row', gap: 10 },
+  selfBtn: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 12 },
+  selfOk: { backgroundColor: '#DCFCE7' },
+  selfRetry: { backgroundColor: '#F1F5F9' },
+  selfBtnText: { fontWeight: '700', fontSize: 14, color: '#0F172A' },
 });
