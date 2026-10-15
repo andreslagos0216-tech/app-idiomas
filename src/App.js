@@ -17,6 +17,7 @@ import {
 import { COURSES_DATA } from './coursesData';
 import { PL_ES_A1 } from './data/pl-es';
 import ListeningCard from './components/ListeningCard';
+import PronunciationCheck from './components/PronunciationCheck';
 import { PL_ES_A2 } from './data/pl-es-a2';
 import { PL_ES_A2_2 } from './data/pl-es-a2-2';
 
@@ -429,6 +430,10 @@ const currentCourse = COURSES[selectedLanguageKey] || COURSES['pl'];
             )}
 
             {currentLesson.type === 'voice' && (
+              <PronunciationCheck target={currentLesson.targetPhrase || currentLesson.audio} langCode={{ pl: 'pl-PL', en: 'en-US', es: 'es-ES' }[selectedLanguageKey] || 'pl-PL'} onPass={() => {}} />
+            )}
+
+            {false && (
               <View style={{ alignItems: 'center', paddingVertical: 20, gap: 16 }}>
                 <TouchableOpacity style={styles.micButton} onPress={() => speakText(currentLesson.targetPhrase)}>
                   <Ionicons name="mic" size={36} color="#0284C7" />
@@ -788,6 +793,7 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontWeight: '600' },
   tabActive: { color: '#0284C7', fontWeight: '700' }
 });
+
 
 
 
