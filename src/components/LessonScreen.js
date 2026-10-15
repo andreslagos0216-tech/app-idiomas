@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
+import * as FB from '../lib/feedback';
 
 const PASS = 80;
 const MAX_TRIES = 3;
@@ -364,7 +365,7 @@ function TypeStep({ lesson, result, finish, speak }) {
   );
 }
 
-function Step({ lesson, langCode, onNext, onWrong }) {
+function Step({ lesson, langCode, onNext, onWrong, onAnswer }) {
   const [result, setResult] = useState(null);
   const autoNext = lesson.type === 'match';
 
@@ -377,6 +378,8 @@ function Step({ lesson, langCode, onNext, onWrong }) {
 
   const finish = (ok, note) => {
     setResult({ ok, note });
+    ok ? FB.correct() : FB.wrong();
+    if (onAnswer) onAnswer(lesson.type, ok, lesson.audio || lesson.targetPhrase || (lesson.answers && lesson.answers[0]));
     if (!ok) onWrong();
   };
 
@@ -413,11 +416,11 @@ function Step({ lesson, langCode, onNext, onWrong }) {
   );
 }
 
-export default function LessonScreen({ lessons, moduleTitle, langCode, onLoseHeart, onExit, onComplete }) {
+export default function LessonScreen({ lessons, moduleTitle, langCode, onLoseHeart, onAnswer, onExit, onComplete }) {
   const [idx, setIdx] = useState(0);
   const total = lessons.length;
   const lesson = lessons[idx];
-  const next = () => (idx + 1 < total ? setIdx(idx + 1) : onComplete());
+  const next = () => { FB.tap(); idx + 1 < total ? setIdx(idx + 1) : (FB.finish(), onComplete()); };
   if (!lesson) return null;
 
   return (
@@ -434,7 +437,7 @@ export default function LessonScreen({ lessons, moduleTitle, langCode, onLoseHea
       <ScrollView contentContainerStyle={styles.body}>
         <Text style={styles.module}>{moduleTitle}</Text>
         <Text style={styles.kind}>{KIND[lesson.type] || ''}</Text>
-        <Step key={idx} lesson={lesson} langCode={langCode} onNext={next} onWrong={onLoseHeart} />
+        <Step key={idx} lesson={lesson} langCode={langCode} onNext={next} onWrong={onLoseHeart} onAnswer={onAnswer} />
       </ScrollView>
     </View>
   );
@@ -502,3 +505,4 @@ const styles = StyleSheet.create({
   cont: { padding: 16, borderRadius: 14, alignItems: 'center', marginTop: 6 },
   contText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
 });
+
