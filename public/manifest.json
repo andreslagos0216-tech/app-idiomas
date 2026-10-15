@@ -1,0 +1,15 @@
+﻿{
+  "name": "Mówi",
+  "short_name": "Mówi",
+  "description": "Aprende idiomas escuchando y hablando",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0284C7",
+  "lang": "es",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

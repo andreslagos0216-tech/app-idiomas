@@ -22,7 +22,15 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Mówi",
+      "shortName": "Mówi",
+      "description": "Aprende idiomas escuchando y hablando",
+      "lang": "es",
+      "display": "standalone",
+      "orientation": "portrait",
+      "backgroundColor": "#F8FAFC",
+      "themeColor": "#0284C7"
     },
     "plugins": [
       "expo-router",
