@@ -1,34 +1,76 @@
 ﻿// src/data/registry.js
-// Reúne todos los niveles y los convierte al formato que usa la app.
-
 import { PL_ES_A1 } from './pl-es';
 import { PL_ES_A2 } from './pl-es-a2';
 import { PL_ES_A2_2 } from './pl-es-a2-2';
 import { PL_ES_A2_3 } from './pl-es-a2-3';
 import { PL_ES_B1 } from './pl-es-b1';
+import { PL_ES_B1_2 } from './pl-es-b1-2';
+import { PAIRS } from './pl-pairs';
+
+// En A1 y A2 no hay escritura: parejas, escucha, elección, ordenar y pronunciación.
+const DIDACTIC = { A1: true, A2: true };
 
 const toLesson = (l) => ({
   ...l,
-  question: l.question ?? l.prompt?.es ?? '',
-  targetPhrase: l.targetPhrase ?? l.audio ?? '',
+  question: l.question ?? (l.prompt && l.prompt.es) ?? '',
   options: l.options ?? [],
   answers: l.answers ?? (l.correctAnswer ? [l.correctAnswer] : []),
-  correctAnswer: l.correctAnswer ?? (l.answers ? l.answers[0] : ''),
 });
 
-const makeDictation = (m) => (m.listening || []).map((phrase, i) => ({
-  id: m.moduleId + '_dict' + i, type: 'dictation', question: 'Escucha y escribe lo que oyes.', audio: phrase, answers: [phrase], correctAnswer: phrase,
-}));
+function didacticLessons(m, pool) {
+  const out = [];
+  const pairs = PAIRS[m.moduleId] || [];
+  if (pairs.length >= 3) out.push({ id: m.moduleId + '_match', type: 'match', pairs });
 
-const makeShadowing = (m) => (m.listening || []).map((phrase, i) => ({
-  id: m.moduleId + '_shad' + i, type: 'voice', question: 'Escucha y repite en voz alta.', targetPhrase: phrase, audio: phrase,
-}));
+  (m.listening || []).forEach((phrase, i) => {
+    const d = pool.filter((p) => p !== phrase).slice(0, 2);
+    if (d.length < 2) return;
+    const pos = i % 3;
+    const options = [...d.slice(0, pos), phrase, ...d.slice(pos)];
+    out.push({ id: m.moduleId + '_listen' + i, type: 'listen', question: 'Escucha y elige lo que oyes.', audio: phrase, options, correct: pos });
+  });
 
-const toModule = (m) => ({
-  ...m,
-  moduleTitle: m.moduleTitle ?? m.title,
-  lessons: [...makeDictation(m), ...makeShadowing(m), ...m.lessons.map(toLesson)],
-});
+  m.lessons.filter((l) => l.type === 'choice').forEach((l) => out.push(toLesson(l)));
+
+  m.lessons.filter((l) => l.type === 'write').forEach((l) => out.push({
+    id: l.id + '_order',
+    type: 'build',
+    prompt: l.prompt,
+    audio: l.audio || (l.answers && l.answers[0]),
+  }));
+
+  m.lessons.filter((l) => l.type === 'voice').forEach((l) => out.push({ ...toLesson(l), type: 'speak', audio: l.audio || l.targetPhrase }));
+
+  return out;
+}
+
+function advancedLessons(m) {
+  return [
+    ...(m.listening || []).map((phrase, i) => ({
+      id: m.moduleId + '_dict' + i,
+      type: 'dictation',
+      question: 'Escucha y escribe lo que oyes.',
+      audio: phrase,
+      answers: [phrase],
+    })),
+    ...m.lessons.map((l) => (l.type === 'voice' ? { ...toLesson(l), type: 'speak', audio: l.audio || l.targetPhrase } : toLesson(l))),
+  ];
+}
+
+function buildLevel(levelId, title, description, modules) {
+  const pool = modules.flatMap((m) => m.listening || []);
+  return {
+    levelId,
+    title,
+    description,
+    modules: modules.map((m) => ({
+      ...m,
+      moduleTitle: m.moduleTitle ?? m.title,
+      levelId,
+      lessons: DIDACTIC[levelId] ? didacticLessons(m, pool) : advancedLessons(m),
+    })),
+  };
+}
 
 export const LANGUAGES = {
   pl: {
@@ -36,24 +78,9 @@ export const LANGUAGES = {
     name: 'Polaco',
     flag: '🇵🇱',
     levels: [
-      {
-        levelId: 'A1',
-        title: 'Nivel A1 • Fundamentos',
-        description: '10 módulos',
-        modules: PL_ES_A1.modules.map(toModule),
-      },
-      {
-        levelId: 'A2',
-        title: 'Nivel A2 • Ciudad y viajes',
-        description: '10 módulos',
-        modules: [...PL_ES_A2.modules, ...PL_ES_A2_2.modules, ...PL_ES_A2_3.modules].map(toModule),
-      },
-      {
-        levelId: 'B1',
-        title: 'Nivel B1 • Expresión e ideas',
-        description: '3 módulos',
-        modules: PL_ES_B1.modules.map(toModule),
-      },
+      buildLevel('A1', 'Nivel A1 • Fundamentos', '10 módulos', PL_ES_A1.modules),
+      buildLevel('A2', 'Nivel A2 • Ciudad y viajes', '10 módulos', [...PL_ES_A2.modules, ...PL_ES_A2_2.modules, ...PL_ES_A2_3.modules]),
+      buildLevel('B1', 'Nivel B1 • Expresión e ideas', '6 módulos', [...PL_ES_B1.modules, ...PL_ES_B1_2.modules]),
     ],
   },
 };
