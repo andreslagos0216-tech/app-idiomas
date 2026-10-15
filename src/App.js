@@ -430,7 +430,7 @@ const currentCourse = COURSES[selectedLanguageKey] || COURSES['pl'];
             )}
 
             {currentLesson.type === 'voice' && (
-              <PronunciationCheck target={currentLesson.targetPhrase || currentLesson.audio} langCode={{ pl: 'pl-PL', en: 'en-US', es: 'es-ES' }[selectedLanguageKey] || 'pl-PL'} onPass={() => {}} />
+              <PronunciationCheck target={currentLesson.targetPhrase || currentLesson.audio} langCode={{ pl: 'pl-PL', en: 'en-US', es: 'es-ES' }[selectedLanguageKey] || 'pl-PL'} onPass={() => { setIsAnswerChecked(true); setIsCorrectAnswer(true); }} onSkip={() => { setIsAnswerChecked(true); setIsCorrectAnswer(false); }} />
             )}
 
             {false && (
@@ -444,7 +444,7 @@ const currentCourse = COURSES[selectedLanguageKey] || COURSES['pl'];
               </View>
             )}
 
-            {!isAnswerChecked ? (
+            {currentLesson.type === 'voice' && !isAnswerChecked ? null : !isAnswerChecked ? (
               <TouchableOpacity
                 style={[styles.primaryButton, { marginTop: 24 }]}
                 onPress={() => {
@@ -793,6 +793,7 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 10, color: '#94A3B8', marginTop: 2, fontWeight: '600' },
   tabActive: { color: '#0284C7', fontWeight: '700' }
 });
+
 
 
 

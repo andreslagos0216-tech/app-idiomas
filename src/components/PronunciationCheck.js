@@ -1,9 +1,12 @@
-﻿import { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+﻿import { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 
-const normalize = (s) =>
+const PASS = 80;
+const MAX_TRIES = 3;
+
+const clean = (s) =>
   (s || '')
     .toLowerCase()
     .normalize('NFD')
@@ -12,76 +15,172 @@ const normalize = (s) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const scoreAgainst = (target, heard) => {
-  const t = normalize(target).split(' ').filter(Boolean);
-  const h = normalize(heard).split(' ').filter(Boolean);
-  const matched = t.map((w) => ({ word: w, ok: h.includes(w) }));
-  const correct = matched.filter((m) => m.ok).length;
-  const score = t.length ? Math.round((correct / t.length) * 100) : 0;
-  return { score, matched };
+// Distancia de edición entre dos palabras (cuántas letras cambian)
+const dist = (a, b) => {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(
+        prev[j] + 1,
+        cur[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+    }
+    prev = cur;
+  }
+  return prev[b.length];
 };
 
-export default function PronunciationCheck({ target, langCode, onPass }) {
+// Palabras largas toleran más errores de una letra
+const tolerance = (w) => (w.length >= 6 ? 2 : w.length >= 4 ? 1 : 0);
+
+// Compara cada palabra de la frase objetivo con lo que se oyó
+const analyze = (target, heard) => {
+  const t = clean(target).split(' ').filter(Boolean);
+  const h = clean(heard).split(' ').filter(Boolean);
+  const words = t.map((w) => {
+    let best = Infinity;
+    h.forEach((x) => { best = Math.min(best, dist(w, x)); });
+    const tol = tolerance(w);
+    const status = best <= tol ? 'ok' : best <= tol + 1 ? 'close' : 'miss';
+    return { word: w, status };
+  });
+  const points = words.reduce(
+    (acc, w) => acc + (w.status === 'ok' ? 1 : w.status === 'close' ? 0.5 : 0),
+    0
+  );
+  const score = t.length ? Math.round((points / t.length) * 100) : 0;
+  return { words, score };
+};
+
+export default function PronunciationCheck({ target, langCode, onPass, onSkip }) {
   const [phase, setPhase] = useState('idle');
-  const [message, setMessage] = useState('Pulsa el micrófono y repite la frase.');
-  const [result, setResult] = useState(null);
+  const [live, setLive] = useState(null);
+  const [final, setFinal] = useState(null);
   const [heard, setHeard] = useState('');
+  const [tries, setTries] = useState(0);
+  const [msg, setMsg] = useState('Pulsa el micrófono y repite la frase.');
   const recRef = useRef(null);
-  const gotResult = useRef(false);
+  const gotFinal = useRef(false);
+  const triesRef = useRef(0);
+  const scale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (phase === 'pass') {
+      scale.setValue(0);
+      Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: false }).start();
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    return () => {
+      if (recRef.current) recRef.current.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    setPhase('idle');
+    setLive(null);
+    setFinal(null);
+    setHeard('');
+    setTries(0);
+    triesRef.current = 0;
+    setMsg('Pulsa el micrófono y repite la frase.');
+  }, [target]);
+
+  const getSR = () =>
+    typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
+
+  const decide = (res) => {
+    setFinal(res);
+    setLive(null);
+    if (res.score >= PASS) {
+      setPhase('pass');
+      setMsg('¡Excelente pronunciación! 🎉');
+      if (onPass) onPass(res.score);
+    } else {
+      triesRef.current += 1;
+      setTries(triesRef.current);
+      setPhase('fail');
+      setMsg(
+        triesRef.current >= MAX_TRIES
+          ? 'Escucha el modelo despacio y vuelve a intentarlo.'
+          : 'Casi. Mira las palabras en rojo y ámbar y vuelve a intentarlo.'
+      );
+    }
+  };
 
   const listen = () => {
-    const SR = typeof window !== 'undefined'
-      ? window.SpeechRecognition || window.webkitSpeechRecognition
-      : null;
-
+    const SR = getSR();
     if (!SR) {
       setPhase('noSupport');
-      setMessage('Este navegador no tiene reconocimiento de voz. Usa la autoevaluación de abajo.');
+      setMsg('Este navegador no tiene reconocimiento de voz. Usa los botones de abajo.');
       return;
     }
-
     try {
       const rec = new SR();
       rec.lang = langCode || 'pl-PL';
-      rec.interimResults = false;
+      rec.continuous = false;
+      rec.interimResults = true;
       rec.maxAlternatives = 3;
       recRef.current = rec;
-      gotResult.current = false;
-      setPhase('listening');
-      setResult(null);
+      gotFinal.current = false;
+      setLive(null);
+      setFinal(null);
       setHeard('');
-      setMessage('Escuchando… repite la frase ahora.');
+      setPhase('listening');
+      setMsg('Te escucho… repite la frase.');
 
       rec.onresult = (e) => {
-        gotResult.current = true;
-        const text = (e.results[0] && e.results[0][0] && e.results[0][0].transcript) || '';
-        setHeard(text);
-        setResult(scoreAgainst(target, text));
-        setPhase('done');
-        setMessage(text ? 'Esto es lo que escuché:' : 'No escuché ninguna palabra.');
+        let interim = '';
+        let bestFinal = null;
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (r.isFinal) {
+            Array.from(r).forEach((alt) => {
+              const a = analyze(target, alt.transcript);
+              if (!bestFinal || a.score > bestFinal.score) {
+                bestFinal = { ...a, text: alt.transcript };
+              }
+            });
+          } else {
+            interim += r[0].transcript + ' ';
+          }
+        }
+        if (bestFinal) {
+          gotFinal.current = true;
+          setHeard(bestFinal.text);
+          decide(bestFinal);
+        } else if (interim) {
+          setLive(analyze(target, interim));
+        }
       };
 
       rec.onerror = (e) => {
-        gotResult.current = true;
+        gotFinal.current = true;
+        if (e.error === 'aborted') return;
         setPhase('error');
-        setMessage(
-          e.error === 'not-allowed'
-            ? 'Permiso del micrófono denegado. Actívalo en Ajustes → Safari → Micrófono.'
-            : 'No funcionó el reconocimiento (' + e.error + '). Usa la autoevaluación.'
-        );
+        if (e.error === 'not-allowed') {
+          setMsg('Permiso del micrófono denegado. Actívalo en Ajustes → Safari → Micrófono.');
+        } else if (e.error === 'no-speech') {
+          setMsg('No te escuché. Acércate al micrófono y repite.');
+        } else {
+          setMsg('Hubo un problema con el micrófono (' + e.error + '). Inténtalo otra vez.');
+        }
       };
 
       rec.onend = () => {
-        if (!gotResult.current) {
-          setPhase('error');
-          setMessage('No detecté voz. Pulsa el micrófono para intentarlo otra vez.');
+        if (!gotFinal.current) {
+          setPhase((p) => (p === 'listening' ? 'idle' : p));
+          setMsg('No detecté voz. Pulsa el micrófono para intentarlo otra vez.');
         }
       };
 
       rec.start();
     } catch (err) {
       setPhase('noSupport');
-      setMessage('No se pudo iniciar el micrófono. Usa la autoevaluación de abajo.');
+      setMsg('No se pudo iniciar el micrófono. Usa los botones de abajo.');
     }
   };
 
@@ -89,66 +188,69 @@ export default function PronunciationCheck({ target, langCode, onPass }) {
     if (recRef.current) recRef.current.stop();
   };
 
-  const selfOk = () => {
-    setPhase('done');
-    setMessage('¡Muy bien! Marcada como correcta.');
-    if (onPass) onPass(100);
-  };
-
-  const retry = () => {
-    setPhase('idle');
-    setResult(null);
-    setMessage('Pulsa el micrófono y repite la frase.');
-  };
-
-  const hear = () => {
+  const hearModel = (rate) => {
     Speech.stop();
-    Speech.speak(target, { language: langCode || 'pl-PL', rate: 0.8 });
+    Speech.speak(target, { language: langCode || 'pl-PL', rate });
   };
 
-  const showSelfCheck = phase === 'done' || phase === 'error' || phase === 'noSupport';
+  const showWords = phase === 'listening' ? live : final;
+  const chipStyle = (status) =>
+    status === 'ok' ? styles.wordOk : status === 'close' ? styles.wordClose : status === 'miss' ? styles.wordBad : styles.wordNeutral;
 
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.status, phase === 'error' || phase === 'noSupport' ? styles.statusWarn : null]}>
-        {message}
+      <Text style={[styles.status, (phase === 'error' || phase === 'noSupport') && styles.statusWarn]}>
+        {msg}
       </Text>
+
+      {showWords && (
+        <View style={styles.wordRow}>
+          {showWords.words.map((w, i) => (
+            <Text key={i} style={[styles.word, chipStyle(phase === 'listening' ? (w.status === 'ok' ? 'ok' : 'neutral') : w.status)]}>
+              {w.word}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      {phase === 'listening' && live && (
+        <Text style={styles.live}>Puntuación en vivo: {live.score}/100</Text>
+      )}
+
+      {phase === 'pass' && (
+        <Animated.View style={[styles.celebrate, { transform: [{ scale }] }]}>
+          <Text style={styles.celebrateEmoji}>🎉 ⭐ 🎉</Text>
+          <Text style={styles.celebrateText}>{final ? final.score : 0}/100 · ¡Sigue así!</Text>
+        </Animated.View>
+      )}
+
+      {phase === 'fail' && final && (
+        <Text style={styles.score}>
+          {final.score}/100 · Escuchaste: "{heard}"
+        </Text>
+      )}
 
       <TouchableOpacity
         style={[styles.micBtn, phase === 'listening' && styles.micActive]}
         onPress={phase === 'listening' ? stop : listen}
+        disabled={phase === 'pass'}
       >
         <Ionicons name={phase === 'listening' ? 'stop' : 'mic'} size={34} color="#FFFFFF" />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.hearBtn} onPress={hear}>
-        <Text style={styles.hearText}>🔊 Escuchar frase</Text>
-      </TouchableOpacity>
+      <View style={styles.row}>
+        <TouchableOpacity style={styles.hearBtn} onPress={() => hearModel(0.85)}>
+          <Text style={styles.hearText}>🔊 Escuchar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.hearBtn} onPress={() => hearModel(0.5)}>
+          <Text style={styles.hearText}>🐢 Lento</Text>
+        </TouchableOpacity>
+      </View>
 
-      {phase === 'done' && result && (
-        <View style={styles.resultBox}>
-          <Text style={styles.score}>{result.score}/100</Text>
-          {heard ? <Text style={styles.heard}>"{heard}"</Text> : null}
-          <View style={styles.wordRow}>
-            {result.matched.map((m, i) => (
-              <Text key={i} style={[styles.word, m.ok ? styles.wordOk : styles.wordBad]}>{m.word}</Text>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {showSelfCheck && (
-        <View style={styles.selfBox}>
-          <Text style={styles.selfTitle}>¿Lo dijiste bien?</Text>
-          <View style={styles.selfRow}>
-            <TouchableOpacity style={[styles.selfBtn, styles.selfOk]} onPress={selfOk}>
-              <Text style={styles.selfBtnText}>✅ Sí</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.selfBtn, styles.selfRetry]} onPress={retry}>
-              <Text style={styles.selfBtnText}>🔁 Otra vez</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      {phase === 'fail' && tries >= MAX_TRIES && onSkip && (
+        <TouchableOpacity style={styles.skipBtn} onPress={onSkip}>
+          <Text style={styles.skipText}>Continuar sin superarla</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -158,22 +260,22 @@ const styles = StyleSheet.create({
   wrap: { alignItems: 'center', paddingVertical: 12, gap: 12, width: '100%' },
   status: { fontSize: 14, color: '#334155', textAlign: 'center' },
   statusWarn: { color: '#B45309' },
+  wordRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
+  word: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, fontSize: 16, fontWeight: '700', overflow: 'hidden' },
+  wordOk: { backgroundColor: '#DCFCE7', color: '#166534' },
+  wordClose: { backgroundColor: '#FEF3C7', color: '#92400E' },
+  wordBad: { backgroundColor: '#FEE2E2', color: '#991B1B' },
+  wordNeutral: { backgroundColor: '#F1F5F9', color: '#475569' },
+  live: { fontSize: 13, color: '#64748B' },
+  score: { fontSize: 13, color: '#334155', textAlign: 'center' },
+  celebrate: { alignItems: 'center', gap: 4, paddingVertical: 8 },
+  celebrateEmoji: { fontSize: 32 },
+  celebrateText: { fontSize: 16, fontWeight: '800', color: '#15803D' },
   micBtn: { width: 76, height: 76, borderRadius: 38, backgroundColor: '#0284C7', justifyContent: 'center', alignItems: 'center' },
   micActive: { backgroundColor: '#EF4444' },
-  hearBtn: { backgroundColor: '#E0F2FE', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
+  row: { flexDirection: 'row', gap: 10 },
+  hearBtn: { backgroundColor: '#E0F2FE', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12 },
   hearText: { color: '#0369A1', fontWeight: '700', fontSize: 13 },
-  resultBox: { width: '100%', backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, alignItems: 'center', gap: 8 },
-  score: { fontSize: 26, fontWeight: '800', color: '#0F172A' },
-  heard: { fontSize: 13, color: '#334155' },
-  wordRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
-  word: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, fontSize: 14, fontWeight: '700' },
-  wordOk: { backgroundColor: '#DCFCE7', color: '#166534' },
-  wordBad: { backgroundColor: '#FEE2E2', color: '#991B1B' },
-  selfBox: { width: '100%', backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#E2E8F0' },
-  selfTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  selfRow: { flexDirection: 'row', gap: 10 },
-  selfBtn: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 12 },
-  selfOk: { backgroundColor: '#DCFCE7' },
-  selfRetry: { backgroundColor: '#F1F5F9' },
-  selfBtnText: { fontWeight: '700', fontSize: 14, color: '#0F172A' },
+  skipBtn: { paddingVertical: 10, paddingHorizontal: 16 },
+  skipText: { color: '#64748B', fontWeight: '600', fontSize: 13, textDecorationLine: 'underline' },
 });
