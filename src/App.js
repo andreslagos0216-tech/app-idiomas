@@ -11,6 +11,8 @@ import MowiLogo from './components/brand/MowiLogo';
 import TopicPicker from './components/TopicPicker';
 import { loadTopics, saveTopics } from './lib/topics';
 import { topicOfModule } from './data/topicMap';
+import { buildTopicPath, topicProgress } from './lib/topicPath';
+import { TOPICS } from './data/topics';
 import ProfileScreen from './components/ProfileScreen';
 import SocialScreen from './components/SocialScreen';
 import FloatingMenu from './components/FloatingMenu';
@@ -158,6 +160,9 @@ export default function App() {
   };
 
   // Los módulos de los temas elegidos van primero. Ningún módulo se oculta.
+  const pathLevels = buildTopicPath(levels, topics);
+  const tp = topicProgress(levels, topics, done);
+
   const sortByTopics = (mods) => {
     if (!topics.length) return mods;
     const mine = mods.filter((m) => topics.includes(topicOfModule(m.moduleId)));
@@ -211,7 +216,8 @@ export default function App() {
     });
     if (!pool.length) { Alert.alert('Aún no hay práctica', 'Completa algún módulo para desbloquear este modo.'); return; }
     const titles = { speak: 'Práctica de pronunciación', listen: 'Práctica de escucha', match: 'Práctica de parejas' };
-    setCurrent({ moduleId: 'practice-' + kind, title: titles[kind], icon: '🎯', virtual: true, lessons: shuffle(pool).slice(0, 10) });
+    const intro = { speak: 'Repite cada frase en voz alta. Mówi te escucha.', listen: 'Escucha y elige lo que oyes.', match: 'Une cada palabra polaca con su significado.' };
+    setCurrent({ moduleId: 'practice-' + kind, title: titles[kind], icon: '🎯', virtual: true, grammarNote: intro[kind], lessons: shuffle(pool).slice(0, 10) });
     setStage('lesson');
   };
 
@@ -450,7 +456,15 @@ export default function App() {
           ))}
         </View>
 
-        {levels.map((lvl, li) => {
+        {topics.length > 0 && (
+          <View style={styles.topicBar}>
+            <Text style={styles.topicBarTitle}>Tu ruta: {topics.map((id) => (TOPICS.find((t) => t.id === id) || {}).icon || '').join(' ')}</Text>
+            <Text style={styles.topicBarSub}>{tp.finished}/{tp.total} módulos de tus temas</Text>
+            <View style={styles.track}><View style={[styles.fill, { width: (tp.total ? Math.round((tp.finished / tp.total) * 100) : 0) + '%' }]} /></View>
+          </View>
+        )}
+
+        {pathLevels.map((lvl, li) => {
           const unlocked = levelUnlocked(li);
           const count = lvl.modules.filter((m) => done.includes(m.moduleId)).length;
           return (
@@ -673,10 +687,15 @@ const styles = StyleSheet.create({
   grammarLabel: { fontSize: 12, fontWeight: '800', color: '#0284C7', marginBottom: 6 },
   grammarText: { fontSize: 15, color: '#0F172A', lineHeight: 22 },
   link: { color: '#64748B', fontWeight: '600', textDecorationLine: 'underline', marginTop: 8 },
+  topicBar: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
+  topicBarTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  topicBarSub: { fontSize: 12, color: '#64748B' },
   tabs: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 64, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   tab: { alignItems: 'center', flex: 1 },
   tabText: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginTop: 2 },
 });
+
+
 
 
 
