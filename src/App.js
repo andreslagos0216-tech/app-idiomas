@@ -7,6 +7,7 @@ import { LANGUAGES, DIALOGUE_LIST } from './data/registry';
 import ListeningCard from './components/ListeningCard';
 import LessonScreen from './components/LessonScreen';
 import DialogueScreen from './components/DialogueScreen';
+import MowiLogo from './components/brand/MowiLogo';
 import ProfileScreen from './components/ProfileScreen';
 import SocialScreen from './components/SocialScreen';
 import FloatingMenu from './components/FloatingMenu';
@@ -345,7 +346,7 @@ export default function App() {
       <SafeAreaView style={styles.screen}>
         <StatusBar barStyle="dark-content" />
         <ScrollView contentContainerStyle={styles.center}>
-          <View style={styles.owl}><Text style={{ fontSize: 56 }}>🦉</Text></View>
+          <MowiLogo size={96} streak={skills.streak} />
           <Text style={styles.brand}>Mówi</Text>
           <Text style={styles.tagline}>Escucha, repite y habla con fluidez</Text>
           <Text style={styles.label}>¿Cómo te llamas?</Text>
@@ -373,7 +374,7 @@ export default function App() {
 
   const header = (
     <View style={styles.header}>
-      <View style={styles.avatar}><Text style={{ fontSize: 18 }}>{game.emoji}</Text></View>
+      <MowiLogo size={34} streak={skills.streak} showSeal={false} />
       <View style={{ flex: 1 }}>
         <Text style={styles.hName}>{name}</Text>
         <Text style={styles.hSub}>{course.flag} {course.name} · Inmersión</Text>
@@ -646,3 +647,4 @@ const styles = StyleSheet.create({
   tab: { alignItems: 'center', flex: 1 },
   tabText: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginTop: 2 },
 });
+
