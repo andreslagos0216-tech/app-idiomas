@@ -10,6 +10,7 @@ import DialogueScreen from './components/DialogueScreen';
 import MowiLogo from './components/brand/MowiLogo';
 import TopicPicker from './components/TopicPicker';
 import { loadTopics, saveTopics } from './lib/topics';
+import { topicOfModule } from './data/topicMap';
 import ProfileScreen from './components/ProfileScreen';
 import SocialScreen from './components/SocialScreen';
 import FloatingMenu from './components/FloatingMenu';
@@ -154,6 +155,14 @@ export default function App() {
     setTopics(list);
     saveTopics(list);
     setPickingTopics(false);
+  };
+
+  // Los módulos de los temas elegidos van primero. Ningún módulo se oculta.
+  const sortByTopics = (mods) => {
+    if (!topics.length) return mods;
+    const mine = mods.filter((m) => topics.includes(topicOfModule(m.moduleId)));
+    const rest = mods.filter((m) => !topics.includes(topicOfModule(m.moduleId)));
+    return [...mine, ...rest];
   };
 
   const levelUnlocked = (i) => i === 0 || levels[i - 1].modules.every((m) => done.includes(m.moduleId));
@@ -449,7 +458,7 @@ export default function App() {
               <Text style={styles.levelTitle}>{unlocked ? '' : '🔒 '}{lvl.title}</Text>
               <Text style={styles.levelDesc}>{count}/{lvl.modules.length} módulos · {lvl.description}</Text>
               <View style={styles.grid}>
-                {lvl.modules.map((mod) => {
+                {sortByTopics(lvl.modules).map((mod) => {
                   const ok = done.includes(mod.moduleId);
                   return (
                     <TouchableOpacity key={mod.moduleId} style={[styles.node, ok && styles.nodeDone]} onPress={() => { FB.tap(); startModule(mod, li); }}>
@@ -668,5 +677,6 @@ const styles = StyleSheet.create({
   tab: { alignItems: 'center', flex: 1 },
   tabText: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginTop: 2 },
 });
+
 
 
