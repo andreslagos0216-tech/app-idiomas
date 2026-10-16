@@ -8,6 +8,8 @@ import ListeningCard from './components/ListeningCard';
 import LessonScreen from './components/LessonScreen';
 import DialogueScreen from './components/DialogueScreen';
 import MowiLogo from './components/brand/MowiLogo';
+import TopicPicker from './components/TopicPicker';
+import { loadTopics, saveTopics } from './lib/topics';
 import ProfileScreen from './components/ProfileScreen';
 import SocialScreen from './components/SocialScreen';
 import FloatingMenu from './components/FloatingMenu';
@@ -73,6 +75,8 @@ export default function App() {
   const [skills, setSkills] = useState(emptySkills());
   const [settings, setSettings] = useState({ ...DEFAULT_SETTINGS });
   const [game, setGame] = useState(null);
+  const [topics, setTopics] = useState([]);
+  const [pickingTopics, setPickingTopics] = useState(false);
 
   const course = LANGUAGES[langKey];
   const levels = course.levels;
@@ -92,6 +96,7 @@ export default function App() {
         if (h) setHearts(parseInt(h, 10));
         setReview(await loadReview());
         setSkills(touchStreak(await loadSkills()));
+        setTopics(await loadTopics());
         const st = await loadSettings();
         setSettings(st);
         FB.setPrefs(st);
@@ -142,6 +147,13 @@ export default function App() {
     setName(n);
     setRegistered(true);
     save({ name: n });
+    setPickingTopics(true);
+  };
+
+  const finishTopics = (list) => {
+    setTopics(list);
+    saveTopics(list);
+    setPickingTopics(false);
   };
 
   const levelUnlocked = (i) => i === 0 || levels[i - 1].modules.every((m) => done.includes(m.moduleId));
@@ -340,6 +352,15 @@ export default function App() {
   };
 
   if (!loaded || !game) return null;
+
+  if (pickingTopics) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <StatusBar barStyle="dark-content" />
+        <TopicPicker initial={topics} onDone={finishTopics} />
+      </SafeAreaView>
+    );
+  }
 
   if (!registered) {
     return (
@@ -647,4 +668,5 @@ const styles = StyleSheet.create({
   tab: { alignItems: 'center', flex: 1 },
   tabText: { fontSize: 10, color: '#94A3B8', fontWeight: '700', marginTop: 2 },
 });
+
 
