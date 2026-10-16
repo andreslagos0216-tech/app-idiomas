@@ -1,5 +1,5 @@
 ﻿// src/data/dialogues.js
-// Cada diálogo tiene turnos del interlocutor (él habla) y del usuario (elige la respuesta correcta).
+// Conversaciones por etapas. Cada una se desbloquea al avanzar en su nivel (requires = módulos necesarios).
 export const DIALOGUES = [
   {
     id: 'dlg_super',
@@ -7,11 +7,29 @@ export const DIALOGUES = [
     icon: '🛒',
     category: 'Vida diaria',
     level: 'A1',
+    requires: 2,
+    stages: ['Saludo', 'Necesidad', 'Pago', 'Despedida'],
     turns: [
-      { say: 'Dzień dobry! Czy mogę pomóc?', options: ['Dzień dobry! Poproszę chleb.', 'Dziękuję, nie.', 'Dobranoc.'], correct: 0 },
-      { say: 'Oczywiście. Coś jeszcze?', options: ['Tak, poproszę mleko.', 'Do widzenia.', 'Przepraszam, nie rozumiem.'], correct: 0 },
-      { say: 'Razem jest dwanaście złotych.', options: ['Proszę.', 'Zimno dziś.', 'Miło mi.'], correct: 0 },
-      { say: 'Dziękuję. Do widzenia!', options: ['Do widzenia!', 'Kawa, proszę.', 'Gdzie jest apteka?'], correct: 0 },
+      { stage: 0, say: 'Dzień dobry! Czy mogę pomóc?', sayEs: '¡Buenos días! ¿Puedo ayudarle?', options: [
+        { pl: 'Dzień dobry! Poproszę chleb.', es: '¡Buenos días! Quisiera pan.' },
+        { pl: 'Dziękuję, nie.', es: 'Gracias, no.' },
+        { pl: 'Dobranoc.', es: 'Buenas noches.' },
+      ], correct: 0 },
+      { stage: 1, say: 'Oczywiście. Coś jeszcze?', sayEs: 'Claro. ¿Algo más?', options: [
+        { pl: 'Tak, poproszę mleko.', es: 'Sí, quisiera leche.' },
+        { pl: 'Do widzenia.', es: 'Adiós.' },
+        { pl: 'Przepraszam, nie rozumiem.', es: 'Perdón, no entiendo.' },
+      ], correct: 0 },
+      { stage: 2, say: 'Razem jest dwanaście złotych.', sayEs: 'En total son doce zlotys.', options: [
+        { pl: 'Proszę.', es: 'Aquí tiene.' },
+        { pl: 'Zimno dziś.', es: 'Hace frío hoy.' },
+        { pl: 'Miło mi.', es: 'Encantado.' },
+      ], correct: 0 },
+      { stage: 3, say: 'Dziękuję. Do widzenia!', sayEs: 'Gracias. ¡Adiós!', options: [
+        { pl: 'Do widzenia!', es: '¡Adiós!' },
+        { pl: 'Kawa, proszę.', es: 'Café, por favor.' },
+        { pl: 'Gdzie jest apteka?', es: '¿Dónde está la farmacia?' },
+      ], correct: 0 },
     ],
   },
   {
@@ -20,11 +38,29 @@ export const DIALOGUES = [
     icon: '🩺',
     category: 'Vida diaria',
     level: 'A2',
+    requires: 4,
+    stages: ['Llegada', 'Síntomas', 'Consejo', 'Despedida'],
     turns: [
-      { say: 'Dzień dobry. Co panu dolega?', options: ['Boli mnie głowa.', 'Jestem kierowcą.', 'Poproszę rachunek.'], correct: 0 },
-      { say: 'Od kiedy pan się źle czuje?', options: ['Od wczoraj.', 'W poniedziałek.', 'Mam dwadzieścia lat.'], correct: 0 },
-      { say: 'Proszę otworzyć usta.', options: ['Dobrze.', 'Nie wiem.', 'Dziękuję bardzo, do widzenia.'], correct: 0 },
-      { say: 'Musi pan odpocząć. Proszę wziąć lekarstwo.', options: ['Dobrze, dziękuję.', 'Jestem w domu.', 'Idę do kina.'], correct: 0 },
+      { stage: 0, say: 'Dzień dobry. Co panu dolega?', sayEs: 'Buenos días. ¿Qué le pasa?', options: [
+        { pl: 'Boli mnie głowa.', es: 'Me duele la cabeza.' },
+        { pl: 'Jestem kierowcą.', es: 'Soy conductor.' },
+        { pl: 'Poproszę rachunek.', es: 'La cuenta, por favor.' },
+      ], correct: 0 },
+      { stage: 1, say: 'Od kiedy pan się źle czuje?', sayEs: '¿Desde cuándo se siente mal?', options: [
+        { pl: 'Od wczoraj.', es: 'Desde ayer.' },
+        { pl: 'W poniedziałek.', es: 'El lunes.' },
+        { pl: 'Mam dwadzieścia lat.', es: 'Tengo veinte años.' },
+      ], correct: 0 },
+      { stage: 2, say: 'Musi pan odpocząć. Proszę wziąć lekarstwo.', sayEs: 'Tiene que descansar. Tome la medicina.', options: [
+        { pl: 'Dobrze, dziękuję.', es: 'Bien, gracias.' },
+        { pl: 'Jestem w domu.', es: 'Estoy en casa.' },
+        { pl: 'Idę do kina.', es: 'Voy al cine.' },
+      ], correct: 0 },
+      { stage: 3, say: 'Do widzenia. Proszę wrócić za tydzień.', sayEs: 'Adiós. Vuelva dentro de una semana.', options: [
+        { pl: 'Do widzenia, dziękuję.', es: 'Adiós, gracias.' },
+        { pl: 'Dobranoc.', es: 'Buenas noches.' },
+        { pl: 'Lubię czytać.', es: 'Me gusta leer.' },
+      ], correct: 0 },
     ],
   },
   {
@@ -33,11 +69,29 @@ export const DIALOGUES = [
     icon: '🏢',
     category: 'Trabajo',
     level: 'B1',
+    requires: 3,
+    stages: ['Bienvenida', 'Proyecto', 'Plazo', 'Cierre'],
     turns: [
-      { say: 'Dzień dobry, zaczynamy spotkanie. Jak się pani czuje?', options: ['Dzień dobry, dobrze, dziękuję.', 'Do widzenia.', 'Jestem głodny.'], correct: 0 },
-      { say: 'Czy może pani przedstawić projekt?', options: ['Tak, oczywiście.', 'Nie wiem, dobranoc.', 'Gdzie jest dworzec?'], correct: 0 },
-      { say: 'Kiedy projekt będzie gotowy?', options: ['Będzie gotowy w przyszłym tygodniu.', 'Wczoraj byłem w kinie.', 'Mam psa.'], correct: 0 },
-      { say: 'Dziękuję za spotkanie. Do zobaczenia!', options: ['Do zobaczenia!', 'Przepraszam, nie rozumiem.', 'Poproszę kawę.'], correct: 0 },
+      { stage: 0, say: 'Dzień dobry, zaczynamy spotkanie. Jak się pani czuje?', sayEs: 'Buenos días, empezamos la reunión. ¿Cómo se siente?', options: [
+        { pl: 'Dzień dobry, dobrze, dziękuję.', es: 'Buenos días, bien, gracias.' },
+        { pl: 'Do widzenia.', es: 'Adiós.' },
+        { pl: 'Jestem głodny.', es: 'Tengo hambre.' },
+      ], correct: 0 },
+      { stage: 1, say: 'Czy może pani przedstawić projekt?', sayEs: '¿Puede presentar el proyecto?', options: [
+        { pl: 'Tak, oczywiście.', es: 'Sí, claro.' },
+        { pl: 'Nie wiem, dobranoc.', es: 'No sé, buenas noches.' },
+        { pl: 'Gdzie jest dworzec?', es: '¿Dónde está la estación?' },
+      ], correct: 0 },
+      { stage: 2, say: 'Kiedy projekt będzie gotowy?', sayEs: '¿Cuándo estará listo el proyecto?', options: [
+        { pl: 'Będzie gotowy w przyszłym tygodniu.', es: 'Estará listo la próxima semana.' },
+        { pl: 'Wczoraj byłem w kinie.', es: 'Ayer fui al cine.' },
+        { pl: 'Mam psa.', es: 'Tengo un perro.' },
+      ], correct: 0 },
+      { stage: 3, say: 'Dziękuję za spotkanie. Do zobaczenia!', sayEs: 'Gracias por la reunión. ¡Hasta luego!', options: [
+        { pl: 'Do zobaczenia!', es: '¡Hasta luego!' },
+        { pl: 'Przepraszam, nie rozumiem.', es: 'Perdón, no entiendo.' },
+        { pl: 'Poproszę kawę.', es: 'Quisiera un café.' },
+      ], correct: 0 },
     ],
   },
   {
@@ -46,11 +100,29 @@ export const DIALOGUES = [
     icon: '💼',
     category: 'Trabajo',
     level: 'B1',
+    requires: 3,
+    stages: ['Bienvenida', 'Experiencia', 'Equipo', 'Cierre'],
     turns: [
-      { say: 'Proszę usiąść. Dlaczego chce pan pracować u nas?', options: ['Bo lubię ten zawód.', 'Bo jestem zmęczony.', 'Bo jem obiad.'], correct: 0 },
-      { say: 'Jakie ma pan doświadczenie?', options: ['Pracowałem w biurze przez pięć lat.', 'Byłem w domu wczoraj.', 'Mam nowe buty.'], correct: 0 },
-      { say: 'Czy potrafi pan pracować w zespole?', options: ['Tak, potrafię.', 'Nie, nie lubię ludzi.', 'Dziękuję, do widzenia.'], correct: 0 },
-      { say: 'Dziękujemy. Odezwiemy się w przyszłym tygodniu.', options: ['Dziękuję, do usłyszenia.', 'Poproszę rachunek.', 'Jest zimno.'], correct: 0 },
+      { stage: 0, say: 'Proszę usiąść. Dlaczego pan chce pracować u nas?', sayEs: 'Siéntese. ¿Por qué quiere trabajar con nosotros?', options: [
+        { pl: 'Bo lubię ten zawód.', es: 'Porque me gusta esta profesión.' },
+        { pl: 'Bo jestem zmęczony.', es: 'Porque estoy cansado.' },
+        { pl: 'Bo jem obiad.', es: 'Porque como la comida.' },
+      ], correct: 0 },
+      { stage: 1, say: 'Jakie ma pan doświadczenie?', sayEs: '¿Qué experiencia tiene?', options: [
+        { pl: 'Pracowałem w biurze przez pięć lat.', es: 'Trabajé en una oficina durante cinco años.' },
+        { pl: 'Byłem w domu wczoraj.', es: 'Ayer estuve en casa.' },
+        { pl: 'Mam nowe buty.', es: 'Tengo zapatos nuevos.' },
+      ], correct: 0 },
+      { stage: 2, say: 'Czy potrafi pan pracować w zespole?', sayEs: '¿Sabe trabajar en equipo?', options: [
+        { pl: 'Tak, potrafię.', es: 'Sí, sé hacerlo.' },
+        { pl: 'Nie, nie lubię ludzi.', es: 'No, no me gustan las personas.' },
+        { pl: 'Dziękuję, do widzenia.', es: 'Gracias, adiós.' },
+      ], correct: 0 },
+      { stage: 3, say: 'Dziękujemy. Odezwiemy się w przyszłym tygodniu.', sayEs: 'Gracias. Le avisaremos la próxima semana.', options: [
+        { pl: 'Dziękuję, do usłyszenia.', es: 'Gracias, hasta pronto.' },
+        { pl: 'Poproszę rachunek.', es: 'La cuenta, por favor.' },
+        { pl: 'Jest zimno.', es: 'Hace frío.' },
+      ], correct: 0 },
     ],
   },
 ];
