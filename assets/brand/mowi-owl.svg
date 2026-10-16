@@ -1,0 +1,36 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E0F2FE"/>
+      <stop offset="1" stop-color="#7DD3FC"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#A16207"/>
+      <stop offset="1" stop-color="#78350F"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#FFFFFF" stroke-width="10" opacity="0.7"/>
+  <path d="M150 210 L120 110 L200 170 Z" fill="#78350F"/>
+  <path d="M362 210 L392 110 L312 170 Z" fill="#78350F"/>
+  <ellipse cx="256" cy="290" rx="150" ry="170" fill="url(#body)"/>
+  <ellipse cx="256" cy="345" rx="92" ry="105" fill="#FDE68A"/>
+  <path d="M256 330 L220 310 L240 360 Z" fill="#78350F" opacity="0.15"/>
+  <circle cx="200" cy="230" r="66" fill="#FFFFFF"/>
+  <circle cx="312" cy="230" r="66" fill="#FFFFFF"/>
+  <circle cx="200" cy="236" r="34" fill="#0F172A"/>
+  <circle cx="312" cy="236" r="34" fill="#0F172A"/>
+  <circle cx="210" cy="224" r="11" fill="#FFFFFF"/>
+  <circle cx="322" cy="224" r="11" fill="#FFFFFF"/>
+  <circle cx="200" cy="230" r="66" fill="none" stroke="#F59E0B" stroke-width="10"/>
+  <circle cx="312" cy="230" r="66" fill="none" stroke="#F59E0B" stroke-width="10"/>
+  <path d="M244 290 L268 290 L256 326 Z" fill="#F59E0B"/>
+  <path d="M120 430 Q190 400 256 430 Q322 400 392 430 L392 470 Q322 440 256 470 Q190 440 120 470 Z" fill="#FFFFFF"/>
+  <path d="M120 430 Q190 400 256 430 L256 470 Q190 440 120 470 Z" fill="#0284C7"/>
+  <path d="M392 430 Q322 400 256 430 L256 470 Q322 440 392 470 Z" fill="#0EA5E9"/>
+  <path d="M150 120 Q256 60 362 120" fill="none" stroke="#0284C7" stroke-width="22" stroke-linecap="round"/>
+  <circle cx="390" cy="120" r="24" fill="#0284C7"/>
+  <circle cx="410" cy="150" r="14" fill="#0284C7"/>
+  <circle cx="400" cy="400" r="58" fill="#F59E0B" stroke="#FFFFFF" stroke-width="10"/>
+  <text x="400" y="424" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="700" text-anchor="middle" fill="#FFFFFF">ą</text>
+</svg>
